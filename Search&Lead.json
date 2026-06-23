@@ -1,0 +1,516 @@
+{
+  "name": "Search&Lead",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apify.com/v2/acts/compass~google-maps-extractor/run-sync-get-dataset-items",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer apify_api_3hL6OaSQsGtnubCHebxjCEvvSpWagC3WWiu7"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n    \"language\": \"en\",\n    \"locationQuery\": \"{{ $json.City }}\",\n    \"maxCrawledPlacesPerSearch\": 50,\n    \"searchStringsArray\": [\n        \"{{ $json.Type }}\"\n    ],\n    \"skipClosedPlaces\": false\n}",
+        "options": {
+          "redirect": {
+            "redirect": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -64,
+        48
+      ],
+      "id": "c843fc7f-620f-4029-95ba-7912d7fb5b68",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "62464898-27a9-4909-8835-0056362d383e",
+              "name": "Name",
+              "value": "={{ $json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "2f07c8c5-edfc-4051-b39f-3a6e161112da",
+              "name": "Phone Number",
+              "value": "={{ $json.phone }}",
+              "type": "string"
+            },
+            {
+              "id": "6644249f-f9e0-4fe3-adc6-6864942ea53d",
+              "name": "Address",
+              "value": "={{ $json.address }}",
+              "type": "string"
+            },
+            {
+              "id": "14178578-1392-4ca1-9e49-29d94e3751f9",
+              "name": "website",
+              "value": "={{ $json.website }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        144,
+        48
+      ],
+      "id": "3c6f0725-885a-49ac-9a01-3d88c75bebc0",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.filter(item => {\n  const website = item.json.website;\n  return website && website !== null && website.trim() !== '';\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        352,
+        48
+      ],
+      "id": "cedf2e46-001e-45a4-9a32-a739e60be8ef",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        560,
+        48
+      ],
+      "id": "ee61d8b8-9814-4a6a-92b4-cd64315f2ba5",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.website }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        768,
+        144
+      ],
+      "id": "322b7199-1a68-405d-9922-4fa4d3a2bc94",
+      "name": "Scrape Site"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-5-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-5-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "={{ $json.data.length > 5000 ? $json.data.slice(0,5000) : $json.data}}"
+            },
+            {
+              "content": "=You've provided a scrape of a website page. Your task is to provide a two-paragraph abstract of what this page is about.\n\nReturn in this JSON format:\n\n{ \"abstract\": \"your abstract goes here\" }\n\nRules:\n\n- Your extract should be comprehensive—similar level of detail as an abstract to a published paper.\n\n- Use a straightforward, spartan tone of voice.\n\n- If it's empty, just say \"no content\".\n"
+            },
+            {
+              "role": "system",
+              "content": "You are an intelligent website scrape assisstant"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        976,
+        144
+      ],
+      "id": "044b305b-675a-489f-bf4c-386d95640267",
+      "name": "Message a model",
+      "credentials": {
+        "openAiApi": {
+          "id": "v7r2GqIhk2IrzNvE",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "output[0].content[0].text"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1328,
+        144
+      ],
+      "id": "f87edc67-355c-4a47-9168-7dcd5fdaefac",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "=You are an intelligent sales assistant.\n\nYou MUST return ONLY valid JSON.\nDo NOT return text.\nDo NOT wrap JSON in quotes.\nDo NOT include explanations.\n\nReturn EXACTLY this structure:\n{\n  \"message\": {\n    \"role\": \"assistant\",\n    \"content\": {\n      \"icebreaker\": \"\"\n    }\n  }\n}"
+            },
+            {
+              "content": "=We scraped multiple web pages for a business, including positioning, services, and operational setup.\n\nYour task is to write a personalized cold outreach opener that:\n- Clearly shows you understand how the business operates\n- Explicitly mentions an AI automation system you built\n- Connects that system naturally to how they already work\n\nThe message MUST:\n- Open by addressing the contact naturally (first name only)\n- Reference specific, non-obvious details from the website\n- Say that you built a lean AI automation system (do NOT skip this)\n- Explain in 1–2 sentences what the system actually does\n- Align the system with their existing operations (not as a replacement)\n\nStructure:\n- 2 short paragraphs\n- 4–6 sentences total\n- Natural spacing (like a real WhatsApp or email)\n\nTone:\n- Professional\n- Confident\n- Human\n- Not salesy\n\nRules:\n- Do NOT sound like marketing\n- Do NOT exaggerate\n- Do NOT remove the AI automation mention\n- Write as an operator reaching out to another operator\n- Do NOT explain anything outside the JSON\n\nReturn ONLY valid JSON in this format:\n\n{\n  \"icebreaker\": \"\"\n}\n\nInput:\nContact name: {{ $('Loop Over Items').item.json.Name }}\nWebsite: {{ $('Loop Over Items').item.json.website }}\n\nBusiness summary:\n{{ $json.text[0] }}\n"
+            },
+            {
+              "content": "=Profile: {{ $('Loop Over Items').item.json.Name }}\nWebsite: {{ $('Loop Over Items').item.json.website }}\n\nBusiness summary:\n{{ $json.text[0].abstract }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {
+          "temperature": 0.4
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        1488,
+        144
+      ],
+      "id": "3535ed07-f979-439c-bc83-017d3f1b9a39",
+      "name": "Message a model2",
+      "credentials": {
+        "openAiApi": {
+          "id": "v7r2GqIhk2IrzNvE",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "icebreaker",
+              "name": "icebreaker",
+              "value": "={{ JSON.parse($json.output[0].content[0].text).message.content.icebreaker }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1856,
+        144
+      ],
+      "id": "54018928-c5dd-49d2-ad19-36ee06b67f89",
+      "name": "Set Icebreaker"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1_OlT3GnCpXMVusuk7EaDlPgUnggzblRBCj5ZDBeqicw",
+          "mode": "list",
+          "cachedResultName": "Result Search",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1_OlT3GnCpXMVusuk7EaDlPgUnggzblRBCj5ZDBeqicw/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1_OlT3GnCpXMVusuk7EaDlPgUnggzblRBCj5ZDBeqicw/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "City": "={{ $('On form submission').item.json.City }}",
+            "Store Type": "={{ $('On form submission').item.json.Type }}",
+            "Title": "={{ $('Loop Over Items').item.json.Name }}",
+            "Address": "={{ $('Loop Over Items').item.json.Address }}",
+            "Website": "={{ $('Loop Over Items').item.json.website }}",
+            "Icebreaker": "={{ $json.icebreaker }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "City",
+              "displayName": "City",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Store Type",
+              "displayName": "Store Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Title",
+              "displayName": "Title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Address",
+              "displayName": "Address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Website",
+              "displayName": "Website",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Icebreaker",
+              "displayName": "Icebreaker",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2096,
+        144
+      ],
+      "id": "f0368822-f5ae-46c6-8cb6-bb39befb79bf",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "27NFcGFGRNU1p5X4",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "formTitle": "Get Search Queries",
+        "formFields": {
+          "values": [
+            {
+              "fieldName": "City",
+              "fieldLabel": "City",
+              "requiredField": true
+            },
+            {
+              "fieldName": "Type",
+              "fieldLabel": "Type",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.4,
+      "position": [
+        -304,
+        48
+      ],
+      "id": "5c8a3175-72b3-4bf1-a7d1-e32c81902ed4",
+      "name": "On form submission",
+      "webhookId": "3ff183a8-69fd-4401-b9c4-d230b2a199ff"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Scrape Site",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scrape Site": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Message a model2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model2": {
+      "main": [
+        [
+          {
+            "node": "Set Icebreaker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Icebreaker": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "8393115b-ebba-4643-bfda-c960e5bef6ac",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8326ee89420f0a63b25f07a8e04f67d833215360441e21379d89163a8d66462c"
+  },
+  "id": "AslanV7dQJ8X9lSf2ELqr",
+  "tags": []
+}
